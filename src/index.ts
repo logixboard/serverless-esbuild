@@ -13,9 +13,15 @@ import { packExternalModules } from './packExternalModules';
 const SERVERLESS_FOLDER = '.serverless';
 const BUILD_FOLDER = '.build';
 
+const haveSleptOnce = false;
+
 interface ServiceExtended extends Service {
   package?: Serverless.Package;
   functions?: Record<string, Serverless.FunctionDefinition>;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export interface Configuration extends BuildOptions {
@@ -201,10 +207,11 @@ export class EsbuildPlugin implements Plugin {
     if (service.package.individually) {
       const functionNames = service.getAllFunctions();
       functionNames.forEach(name => {
+        const baseName = `${name}.zip`;
         service.getFunction(name).package.artifact = path.join(
           this.originalServicePath,
           SERVERLESS_FOLDER,
-          path.basename(service.getFunction(name).package.artifact)
+          baseName
         );
       });
       return;
@@ -218,6 +225,10 @@ export class EsbuildPlugin implements Plugin {
   }
 
   async cleanup(): Promise<void> {
+    // TODO FIXME wait a bit to make sure the build resources show up. no I'm
+    // not kidding.
+    await sleep(300);
+
     await this.moveArtifacts();
     // Restore service path
     this.serverless.config.servicePath = this.originalServicePath;
